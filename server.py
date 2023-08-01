@@ -17,10 +17,13 @@ class db:
 
 class fdb:
 	def createNewAccount(username, password):
+		pass
 		
 	def loginToAccount(username, password):
+		pass
 	
 	def createNewPost(msg, client):
+		pass
 	
 	
 	
