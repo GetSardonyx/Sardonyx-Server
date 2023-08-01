@@ -12,8 +12,12 @@ connected = {
 	"0": "Server"
 }
 
+con = sqlite3.connect("database.db")
+cur = con.cursor()
+
 class db:
-	pass
+	def createTable(table):
+		cur.execute("CREATE TABLE " + table)
 
 class fdb:
 	def createNewAccount(username, password):
