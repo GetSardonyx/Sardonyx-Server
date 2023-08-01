@@ -5,14 +5,28 @@ import bcrypt
 import os
 import time
 import uuid
+import sqlite
 
 basedir = os.getcwd()
 connected = {
 	"0": "Server"
 }
 
-class Database:
-	pass
+class 
+
+class fdb:
+	def createNewAccount(username, password):
+		
+	def loginToAccount(username, password):
+	
+	def createNewPost(msg, client):
+	
+	
+	
+	
+	
+	
+	
 
 def loginclientwithid(client, username, server):
 	cltemp = client["id"]
@@ -48,26 +62,10 @@ def on_msg(client, server, message):
 		elif(r["ask"]=="makeacc"):
 			if("username" in r):
 				if("password" in r):
-					isAccountMade = True
-					os.chdir("./Users")
-					try:
-						f = open(f'{r["username"]}.json', "x")
-					except FileExistsError:
-						isAccountMade = False
-						server.send_message(client, "601 - Exists")
-					except:
-						isAccountMade = False
-						server.send_message(client, "801 - Internal Confusion")
-					if(isAccountMade):
-						try:
-							ps_byte = bytes(r["password"], 'utf-8')
-							hashed = bcrypt.hashpw(ps_byte, bcrypt.gensalt())
-							hashdef = hashed.decode()
-							f.write('{"username":"' + r["username"] + '","password":"' + hashdef + '","banned":"0","bio":"This user has not set their bio.","state":"0"}')
-							f.close()
-							loginclientwithid(client, r["username"], server)
-						except:
-							server.send_message(client, "801 - Internal Confusion")
+					if(db.createNewAccount(r["username"], r["password"])):
+						loginclientwithid(client, r["username"], server)
+					else:
+						server.send_message(client, "803 - Signup Error")
 				else:
 					server.send_message(client, "702 - Malformed Data")
 			else:
@@ -75,36 +73,10 @@ def on_msg(client, server, message):
 		elif(r["ask"]=="login"):
 			if("username" in r):
 				if("password" in r):
-					os.chdir("./Users")
-					if os.path.isfile("./" + r["username"] + ".json"):
-						f = open(r["username"] + ".json")
-						con3 = True
-						try:
-							s = json.load(f)
-						except ValueError:
-							con3 = False
-							server.send_message(client, "802 - Corrupted Account Data")
-						except:
-							con3 = False
-							server.send_message(client, "801 - Internal Confusion")
-						if(con3):
-							if("banned" in s):
-								if("password" in s):
-									if(s["banned"]=="0"):
-										pw_bytes = bytes(r["password"], 'utf-8')
-										hpw_bytes = bytes(s["password"], 'utf-8')
-										if bcrypt.checkpw(pw_bytes, hpw_bytes):
-											loginclientwithid(client, r["username"], server)
-										else:
-											server.send_message(client, "704 - Invalid Password")
-									else:
-										server.send_message(client, "705 - Account Banned")
-								else:
-									server.send_message(client, "802 - Corrupted Account Data")	
-							else:
-								server.send_message(client, "802 - Corrupted Account Data")
+					if(db.logIn(r["username"], r["password"])):
+						loginclientwithid(client, r["username"], server)
 					else:
-						server.send_message(client, "703 - Invalid Username")				
+						server.send_message(client, "804 - Login Error")			
 				else:
 					server.send_message(client, "702 - Malformed Data")
 			else:
@@ -113,11 +85,10 @@ def on_msg(client, server, message):
 			if("msg" in r):
 				cltemp = client["id"]
 				if(str(cltemp) in connected):
-					os.chdir("./Posts")
-					pid = uuid.uuid4()
-					f = open(f'{}.json', "x")
-					f.write('{"username":"' + connected[str(cltemp)] + '","content":"' + r["msg"] + '","timestamp":"' + str(time.time()) + '","id":"' + pid + '')
-					f.close()
+					if(db.createNewPost(r["msg"], client):
+						server.send_message(client, "901 - OK")
+					else:
+						server.send_message(client, "805 - Posting Error")
 				else:
 					server.send_message(client, "602 - Unauthorized")
 			else:
