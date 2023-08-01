@@ -89,7 +89,7 @@ def on_msg(client, server, message):
 			if("msg" in r):
 				cltemp = client["id"]
 				if(str(cltemp) in connected):
-					if(db.createNewPost(r["msg"], client):
+					if(db.createNewPost(r["msg"], client)):
 						server.send_message(client, "901 - OK")
 					else:
 						server.send_message(client, "805 - Posting Error")
