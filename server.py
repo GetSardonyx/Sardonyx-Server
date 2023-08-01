@@ -5,7 +5,7 @@ import bcrypt
 import os
 import time
 import uuid
-import sqlite
+import sqlite3
 
 basedir = os.getcwd()
 connected = {
