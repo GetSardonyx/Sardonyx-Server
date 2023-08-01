@@ -12,7 +12,8 @@ connected = {
 	"0": "Server"
 }
 
-class 
+class db:
+	pass
 
 class fdb:
 	def createNewAccount(username, password):
