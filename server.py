@@ -19,36 +19,35 @@ client = MongoClient(uri, server_api=ServerApi('1'))
 # Configuration for MongoDB
 datab = "Sardonyx" # The name of the main Database, default Sardonyx
 posb = "Posts" # The name of the post collection, default Posts
-accb = "Users" # The name of the users colllection, default Users
+usrb = "Users" # The name of the users colllection, default Users
+# Configuration ends here
 
 dba = client.[datab]
-
-class fdb:
-	def pingDeployment():
-		try:
-			client.admin.command('ping')
-			print("Pinged your deployment. You successfully connected to MongoDB!")
-		except Exception as e:
-			print(e)
-	
+posc = dba[posb]
+usrc = dba[usrb]
 
 class db:
-	def createNewAccount(username, password):
-		pass
-		
-	def loginToAccount(username, password):
+	def insertPost(username, content):
 		pass
 	
-	def createNewPost(msg, client):
-		pass
+	def insertUser(username, password):
+		if(usrc.find_one({"username": ""})==None):
+			pw_hash = bytes(password, 'utf-8')
+			hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
+			hashdef = hashed.decode()
+			datatosend = {
+				"username": username
+				"password": hashdef
+				"banned": 0
+				"bio": "This user has not set their bio."
+				"state": 0
+			}
+			try:
+				usrc.insert_one(datatosend)
+			except:
+				return False
+			return True
 	
-	
-	
-	
-	
-	
-	
-
 def loginclientwithid(client, username, server):
 	cltemp = client["id"]
 	connected[str(cltemp)] = username
@@ -83,7 +82,7 @@ def on_msg(client, server, message):
 		elif(r["ask"]=="makeacc"):
 			if("username" in r):
 				if("password" in r):
-					if(db.createNewAccount(r["username"], r["password"])):
+					if(db.insertUser(r["username"], r["password"])):
 						loginclientwithid(client, r["username"], server)
 					else:
 						server.send_message(client, "803 - Signup Error")
