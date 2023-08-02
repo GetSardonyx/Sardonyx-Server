@@ -15,7 +15,7 @@ connected = {
 
 if(os.path.isfile("./mongo.uri")):
 	f = open("./mongo.uri", 'r')
-	uri = f.read()
+	uri = f.readline().strip('\n')
 	f.close()
 else: 
 	uri = input("Database uri: ")
@@ -33,12 +33,20 @@ posc = dba[posb]
 usrc = dba[usrb]
 
 class db:
+	def getUser(username):
+		acc = usrc.find_one({"username": username})
+		if(acc!=None):
+			safe = acc.pop("password")
+			return str(safe)
+		else:
+			return None
+	
 	def getPosts(client, server):
 		server.send_message(client, str(list(posc.find().sort("timestamp", -1).limit(10))))
 	
 	def insertPost(id, content, server):
 		ts = time.time()
-		pid = uuid.uuid4()
+		pid = str(uuid.uuid4())
 		datatosend = {
 			"_id": pid,
 			"username": connected[str(id)],
@@ -49,7 +57,8 @@ class db:
 		}
 		try:
 			posc.insert_one(datatosend)
-		except:
+		except Exception as e:
+			print(e)
 			return "fail"
 		server.send_message_to_all(str(datatosend))
 		return "done"
@@ -75,7 +84,9 @@ class db:
 			pw_hash = bytes(password, 'utf-8')
 			hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
 			hashdef = hashed.decode()
+			pid = str(uuid.uuid4())
 			datatosend = {
+				"_id": pid,
 				"username": username,
 				"password": hashdef,
 				"banned": False,
