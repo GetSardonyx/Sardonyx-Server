@@ -27,11 +27,37 @@ posc = dba[posb]
 usrc = dba[usrb]
 
 class db:
-	def insertPost(username, content):
-		pass
+	def insertPost(id, content, server):
+		ts = time.time()
+		datatosend = {
+			"username": connected[str(id)],
+			"content": content,
+			"timestamp": ts,
+			"likes": 0,
+			"reports": []
+		}
+		try:
+			posc.insert_one(datatosend)
+		except:
+			return "fail"
+		server.send_message_to_all(str(datatosend))
+		return "done"
 		
 	def authUser(username, password):
-		pass
+		acc = usrc.find_one({"username": username})
+		if(acc!=None):
+			if(acc["banned"]):
+				return "banned"
+			else:
+				pw_hash = bytes(password, 'utf-8')
+				hpw_hash = bytes(acc["password"], 'utf-8')
+				if bcrypt.checkpw(pw_hash, hpw_hash):
+					return "done"
+				else:
+					return "invalid"
+		else:
+			return "notmade"
+		
 	
 	def insertUser(username, password):
 		if(usrc.find_one({"username": username})==None):
@@ -41,7 +67,7 @@ class db:
 			datatosend = {
 				"username": username,
 				"password": hashdef,
-				"banned": 0,
+				"banned": False,
 				"bio": "This user has not set their bio.",
 				"state": 0
 			}
@@ -50,6 +76,8 @@ class db:
 			except:
 				return False
 			return True
+		else:
+			return False
 	
 def loginclientwithid(client, username, server):
 	cltemp = client["id"]
@@ -96,10 +124,17 @@ def on_msg(client, server, message):
 		elif(r["ask"]=="login"):
 			if("username" in r):
 				if("password" in r):
-					if(db.logIn(r["username"], r["password"])):
+					auth = db.authUser(r["username"], r["password"])
+					if(auth=="done"):
 						loginclientwithid(client, r["username"], server)
+					elif(auth=="invalid"):
+						server.send_message(client, "704 - Invalid Password")	
+					elif(auth=="banned"):
+						server.send_message(client, "705 - Account Banned")	
+					elif(auth=="notmade"):
+						server.send_message(client, "703 - Invalid Username")
 					else:
-						server.send_message(client, "804 - Login Error")			
+						server.send_message(client, "804 - Login Error")
 				else:
 					server.send_message(client, "702 - Malformed Data")
 			else:
@@ -108,10 +143,13 @@ def on_msg(client, server, message):
 			if("msg" in r):
 				cltemp = client["id"]
 				if(str(cltemp) in connected):
-					if(db.createNewPost(r["msg"], client)):
+					stuff = db.insertPost(cltemp, r["msg"], server)
+					if(stuff=="done"):
 						server.send_message(client, "901 - OK")
-					else:
+					elif(stuff=="fail"):
 						server.send_message(client, "805 - Posting Error")
+					elif(stuff=="unauthed"):
+						server.send_message(client, "602 - Unauthorized+")
 				else:
 					server.send_message(client, "602 - Unauthorized")
 			else:
