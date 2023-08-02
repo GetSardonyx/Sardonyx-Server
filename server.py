@@ -5,21 +5,34 @@ import bcrypt
 import os
 import time
 import uuid
-import sqlite3
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 basedir = os.getcwd()
 connected = {
 	"0": "Server"
 }
 
-con = sqlite3.connect("database.db")
-cur = con.cursor()
+uri = input("Database uri: ")
+client = MongoClient(uri, server_api=ServerApi('1'))
 
-class db:
-	def createTable(table):
-		cur.execute("CREATE TABLE " + table)
+# Configuration for MongoDB
+datab = "Database" # The name of the main Database, default Database
+posb = "Posts" # The name of the post collection, default Posts
+accb = "Users" # The name of the users colllection, default Users
+
+dba = client.["Database"]
 
 class fdb:
+	def pingDeployment():
+		try:
+			client.admin.command('ping')
+			print("Pinged your deployment. You successfully connected to MongoDB!")
+		except Exception as e:
+			print(e)
+	
+
+class db:
 	def createNewAccount(username, password):
 		pass
 		
@@ -112,4 +125,4 @@ server = WebsocketServer(host='127.0.0.1', port=9001, loglevel=logging.INFO)
 server.set_fn_new_client(new_client)
 server.set_fn_message_received(on_msg)
 server.set_fn_client_left(left_client)
-server.run_forever()
+# server.run_forever()
