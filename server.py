@@ -13,7 +13,13 @@ connected = {
 	"0": "Server"
 }
 
-uri = input("Database uri: ")
+if(os.path.isfile("./mongo.uri")):
+	f = open("./mongo.uri", 'r')
+	uri = f.read()
+	f.close()
+else: 
+	uri = input("Database uri: ")
+	
 client = MongoClient(uri, server_api=ServerApi('1'))
 
 # Configuration for MongoDB
@@ -27,9 +33,14 @@ posc = dba[posb]
 usrc = dba[usrb]
 
 class db:
+	def getPosts(client, server):
+		server.send_message(client, str(list(posc.find().sort("timestamp", -1).limit(10))))
+	
 	def insertPost(id, content, server):
 		ts = time.time()
+		pid = uuid.uuid4()
 		datatosend = {
+			"_id": pid,
 			"username": connected[str(id)],
 			"content": content,
 			"timestamp": ts,
@@ -110,7 +121,7 @@ def on_msg(client, server, message):
 	if(continuing):
 		if(not "ask" in r):
 			server.send_message(client, "702 - Malformed Data")
-		elif(r["ask"]=="makeacc"):
+		elif(r["ask"]=="signup"):
 			if("username" in r):
 				if("password" in r):
 					if(db.insertUser(r["username"], r["password"])):
@@ -156,8 +167,10 @@ def on_msg(client, server, message):
 				server.send_message(client, "702 - Malformed Data")
 		elif(r["ask"]=="ping"):
 			server.send_message(client, "Pong!")
+		elif(r["ask"]=="get_posts"):
+			db.getPosts(client, server)
 		else:
-			server.send_message(client, "000 - No Specified Data")
+			server.send_message(client, "000 - Invalid Specified Data")
 					
 					
 

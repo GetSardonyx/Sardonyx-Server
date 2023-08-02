@@ -1,3 +1,6 @@
 # folders from legacy server
 Users/
 Posts/
+
+# database uri
+mongo.uri
