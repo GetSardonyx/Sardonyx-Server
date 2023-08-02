@@ -51,7 +51,7 @@ class	db:
 	def getPosts():
 		return list(posc.find().sort("timestamp", -1).limit(10))
 	
-	def insertPost(id, content, server):
+	def insertPost(id, content):
 		ts = time.time()
 		pid = str(uuid.uuid4())
 		datatosend = {
@@ -108,7 +108,7 @@ class	db:
 		else:
 			return False
 	
-def loginclientwithid(client, username, server):
+def loginclientwithid(client, username):
 	cltemp = client["id"]
 	connected[str(cltemp)] = username
 	print("User " + username + " is now bound to connected ID " + str(cltemp))
@@ -143,7 +143,7 @@ def on_msg(client, server, message):
 			if("username" in r):
 				if("password" in r):
 					if(db.insertUser(r["username"], r["password"])):
-						loginclientwithid(client, r["username"], server)
+						loginclientwithid(client, r["username"])
 					else:
 						ws.sendClient(client, "803 - Signup Error")
 				else:
@@ -155,7 +155,7 @@ def on_msg(client, server, message):
 				if("password" in r):
 					auth = db.authUser(r["username"], r["password"])
 					if(auth=="done"):
-						loginclientwithid(client, r["username"], server)
+						loginclientwithid(client, r["username"])
 					elif(auth=="invalid"):
 						ws.sendClient(client, "704 - Invalid Password")	
 					elif(auth=="banned"):
@@ -172,13 +172,13 @@ def on_msg(client, server, message):
 			if("msg" in r):
 				cltemp = client["id"]
 				if(str(cltemp) in connected):
-					stuff = db.insertPost(cltemp, r["msg"], server)
+					stuff = db.insertPost(cltemp, r["msg"])
 					if(stuff=="done"):
 						ws.sendClient(client, "901 - OK")
 					elif(stuff=="fail"):
 						ws.sendClient(client, "805 - Posting Error")
 					elif(stuff=="unauthed"):
-						ws.sendClient(client, "602 - Unauthorized+")
+						ws.sendClient(client, "602 - Unauthorized")
 				else:
 					ws.sendClient(client, "602 - Unauthorized")
 			else:
