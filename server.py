@@ -22,24 +22,27 @@ posb = "Posts" # The name of the post collection, default Posts
 usrb = "Users" # The name of the users colllection, default Users
 # Configuration ends here
 
-dba = client.[datab]
+dba = client[datab]
 posc = dba[posb]
 usrc = dba[usrb]
 
 class db:
 	def insertPost(username, content):
 		pass
+		
+	def authUser(username, password):
+		pass
 	
 	def insertUser(username, password):
-		if(usrc.find_one({"username": ""})==None):
+		if(usrc.find_one({"username": username})==None):
 			pw_hash = bytes(password, 'utf-8')
 			hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
 			hashdef = hashed.decode()
 			datatosend = {
-				"username": username
-				"password": hashdef
-				"banned": 0
-				"bio": "This user has not set their bio."
+				"username": username,
+				"password": hashdef,
+				"banned": 0,
+				"bio": "This user has not set their bio.",
 				"state": 0
 			}
 			try:
@@ -124,4 +127,4 @@ server = WebsocketServer(host='127.0.0.1', port=9001, loglevel=logging.INFO)
 server.set_fn_new_client(new_client)
 server.set_fn_message_received(on_msg)
 server.set_fn_client_left(left_client)
-# server.run_forever()
+server.run_forever()
