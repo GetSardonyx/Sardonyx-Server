@@ -17,11 +17,11 @@ uri = input("Database uri: ")
 client = MongoClient(uri, server_api=ServerApi('1'))
 
 # Configuration for MongoDB
-datab = "Database" # The name of the main Database, default Database
+datab = "Sardonyx" # The name of the main Database, default Sardonyx
 posb = "Posts" # The name of the post collection, default Posts
 accb = "Users" # The name of the users colllection, default Users
 
-dba = client.["Database"]
+dba = client.[datab]
 
 class fdb:
 	def pingDeployment():
