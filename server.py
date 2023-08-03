@@ -97,20 +97,33 @@ class	db: # database operations
 	def getUser(username): # this returns a user's account
 		acc = usrc.find_one({"username": username})
 		if(acc!=None):
-			acc["password"] = "" # this replaces the password value with an empty string
+			acc["password"] = "REDACTED" # this replaces the password value with the string REDACTED
 			return acc
+		else:
+			return None
+			
+	def getUncleanedPost(id): # this returns a post
+		postv = posc.find_one({"_id": id})
+		if(postv!=None):
+			return postv
 		else:
 			return None
 			
 	def getPost(id): # this returns a post
 		postv = posc.find_one({"_id": id})
 		if(postv!=None):
+			postv["reports"] = ["REDACTED"]
 			return postv
 		else:
 			return None
 	
 	def getPosts(): # gets 10 most recent posts
-		return list(posc.find().sort("timestamp", -1).limit(10))
+		lis = list(posc.find().sort("timestamp", -1).limit(10))
+		lis2 = []
+		for x in lis:
+			x["reports"] = ["REDACTED"]
+			lis2.append(x)
+		return lis2
 	
 	def insertPost(id, content): # adds a post to the db and sends it to connected clients
 		if(len(content)<=312):
@@ -342,7 +355,7 @@ def on_msg(client, server, message):
 		elif(r["ask"]=="report_post"):
 			if("id" in r and "reason" in r):
 				if("username" in client):
-					gp = db.getPost(r["id"])
+					gp = db.getUncleanedPost(r["id"])
 					if(gp!=None):
 						try:
 							ar = gp["reports"]
@@ -354,6 +367,31 @@ def on_msg(client, server, message):
 							ws.sendClient(client, errors["idk"])
 					else:
 						ws.sendClient(client, errors["malformed"])
+				else:
+					ws.sendClient(client, errors["unauthed"])
+			else:
+				ws.sendClient(client, errors["malformed"])
+		elif(r["ask"]=="get_post"):
+			if("id" in r):
+				if("username" in client):
+					gp = db.getPost(r["id"])
+					ws.sendClient(client, str(gp))
+				else:
+					ws.sendClient(client, errors["unauthed"])
+			else:
+				ws.sendClient(client, errors["malformed"])
+		elif(r["ask"]=="get_reports"):
+			if("id" in r):
+				if("username" in client):
+					a = db.getUser(client["username"])
+					if(a["state"]!=0):
+						gp = db.getUncleanedPost(r["id"])
+						if(gp!=None):
+							ws.sendClient(client, str(gp["reports"]))
+						else:
+							ws.sendClient(client, errors["idk"])
+					else:
+						ws.sendClient(client, errors["state"])
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
