@@ -7,6 +7,9 @@ import time
 import uuid
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import bson
+
+basedir = os.getcwd()
 
 # dict that contains all connected clients and their client ids
 connected = {
@@ -58,19 +61,36 @@ class ws:
 	def sendToAll(msg):
 		server.send_message_to_all(msg)
 
-class	db:
-	def getUser(username):
+class	db: # database operations
+	def changeUser(username, key, value): # change a user's account
+		filter = { 'username': username }
+		endr = { '$set': { key: value } }
+		try:
+			usrc.update_one(filter, endr)
+		except Exception as e:
+			print(e)
+			return False
+		return True
+		
+	def getUncleanedUser(username): # this returns a user's account without removing the password field, this should be used with heavy caution
 		acc = usrc.find_one({"username": username})
 		if(acc!=None):
-			acc["password"] = ""
+			return acc
+		else:
+			return None
+
+	def getUser(username): # this returns a user's account
+		acc = usrc.find_one({"username": username})
+		if(acc!=None):
+			acc["password"] = "" # this replaces the password value with an empty string
 			return acc
 		else:
 			return None
 	
-	def getPosts():
+	def getPosts(): # gets 10 most recent posts
 		return list(posc.find().sort("timestamp", -1).limit(10))
 	
-	def insertPost(id, content):
+	def insertPost(id, content): # adds a post to the db and sends it to connected clients
 		ts = time.time()
 		pid = str(uuid.uuid4())
 		datatosend = {
@@ -89,7 +109,7 @@ class	db:
 		ws.sendToAll(str(datatosend))
 		return "done"
 		
-	def authUser(username, password):
+	def authUser(username, password): # authenticates a user
 		acc = usrc.find_one({"username": username})
 		if(acc!=None):
 			if(acc["banned"]):
@@ -97,7 +117,7 @@ class	db:
 			else:
 				pw_hash = bytes(password, 'utf-8')
 				hpw_hash = bytes(acc["password"], 'utf-8')
-				if bcrypt.checkpw(pw_hash, hpw_hash):
+				if bcrypt.checkpw(pw_hash, hpw_hash): # check if pswd is valid
 					return "done"
 				else:
 					return "invalid"
@@ -105,7 +125,7 @@ class	db:
 			return "notmade"
 		
 	
-	def insertUser(username, password):
+	def insertUser(username, password): # inserts a new user account
 		if(usrc.find_one({"username": username})==None):
 			pw_hash = bytes(password, 'utf-8')
 			hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
@@ -127,7 +147,7 @@ class	db:
 		else:
 			return False
 	
-def loginclientwithid(client, username):
+def loginclientwithid(client, username): # binds client id and username
 	cltemp = client["id"]
 	connected[str(cltemp)] = username
 	print("User " + username + " is now bound to connected ID " + str(cltemp))
@@ -189,15 +209,21 @@ def on_msg(client, server, message):
 				ws.sendClient(client, errors["malformed"])
 		elif(r["ask"]=="post"):
 			if("msg" in r):
-				cltemp = client["id"]
-				if(str(cltemp) in connected):
-					stuff = db.insertPost(cltemp, r["msg"])
-					if(stuff=="done"):
-						ws.sendClient(client, errors["ok"])
-					elif(stuff=="fail"):
-						ws.sendClient(client, errors["idk"])
-					elif(stuff=="unauthed"):
-						ws.sendClient(client, errors["unauthed"])
+				cltemp = str(client["id"])
+				if(cltemp in connected):
+					a = db.getUser(connected[cltemp])
+					if(a==None):
+						ws.sendClient(client, errors["corrupted"])
+					elif(a["banned"]):
+						ws.sendClient(client, errors["banned"])
+					else:
+						stuff = db.insertPost(cltemp, r["msg"])
+						if(stuff=="done"):
+							ws.sendClient(client, errors["ok"])
+						elif(stuff=="fail"):
+							ws.sendClient(client, errors["idk"])
+						elif(stuff=="unauthed"):
+							ws.sendClient(client, errors["unauthed"])
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
@@ -217,7 +243,16 @@ def on_msg(client, server, message):
 				if(cltemp in connected):
 					a = db.getUser(connected[cltemp])
 					if(a["state"]!=0):
-						ws.sendClient(client, "okokok")
+						ab = db.getUncleanedUser(r["username"])
+						if(ab==None):
+							ws.sendClient(client, errors["invalid_user"])
+						else:
+							ab["banned"] = True
+							abc = db.changeUser(r["username"], "banned", True)
+							if(abc):
+								ws.sendClient(client, errors["ok"])
+							else:
+								ws.sendClient(client, errors["idk"])
 					else:
 						ws.sendClient(client, errors["state"])
 				else:
