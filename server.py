@@ -51,6 +51,8 @@ client = MongoClient(uri, server_api=ServerApi('1'))
 datab = "Sardonyx" # The name of the main Database, default Sardonyx
 posb = "Posts" # The name of the post collection, default Posts
 usrb = "Users" # The name of the users colllection, default Users
+# Configuration for development
+debugMode = True # SET THIS TO FALSE IN PRODUCTION!! IF YOU LEAVE THIS AS TRUE THEN ALL INCOMING PACKETS WILL BE LOGGED, LEAKING SENSITIVE DATA!! LEAVE THIS OFF IN A PRODUCTION ENVIRONMENT!!
 # Configuration ends here
 
 dba = client[datab]
@@ -65,6 +67,16 @@ class ws:
 		server.send_message_to_all(msg)
 
 class	db: # database operations
+	def changePost(id, key, value): # change a post's data, e.g. liking or reporting
+		filter = { '_id': id }
+		endr = { '$set': { key: value } }
+		try:
+			posc.update_one(filter, endr)
+		except Exception as e:
+			print(e)
+			return False
+		return True
+
 	def changeUser(username, key, value): # change a user's account
 		filter = { 'username': username }
 		endr = { '$set': { key: value } }
@@ -87,6 +99,13 @@ class	db: # database operations
 		if(acc!=None):
 			acc["password"] = "" # this replaces the password value with an empty string
 			return acc
+		else:
+			return None
+			
+	def getPost(id): # this returns a post
+		postv = posc.find_one({"_id": id})
+		if(postv!=None):
+			return postv
 		else:
 			return None
 	
@@ -187,12 +206,16 @@ def on_msg(client, server, message):
 			lc[str(client["id"])] = time.time()
 		else:
 			ws.sendClient(client, errors["ratelimit"])
-			print("ID " + str(client["id"]) + " (ratelimited): " + str(message))
+			if debugMode:
+				print("ID " + str(client["id"]) + " (ratelimited): " + str(message))
+				
 			return None
 	else:
 		lc[str(client["id"])] = time.time()
 		print("added a client to the ratelimit // " + str(lc))
-	print("ID " + str(client["id"]) + ": " + str(message))
+	if debugMode:
+		print("ID " + str(client["id"]) + ": " + str(message))
+		
 	continuing = True
 	try:
 		r = json.loads(str(message))
@@ -312,6 +335,25 @@ def on_msg(client, server, message):
 						ws.sendClient(client, errors["ok"])
 					else:
 						ws.sendClient(client, errors["state"])
+				else:
+					ws.sendClient(client, errors["unauthed"])
+			else:
+				ws.sendClient(client, errors["malformed"])
+		elif(r["ask"]=="report_post"):
+			if("id" in r and "reason" in r):
+				if("username" in client):
+					gp = db.getPost(r["id"])
+					if(gp!=None):
+						try:
+							ar = gp["reports"]
+							ar.append(r["reason"])
+							db.changePost(r["id"], "reports", ar)
+							ws.sendClient(client, errors["ok"])
+						except Exception as e:
+							print(e)
+							ws.sendClient(client, errors["idk"])
+					else:
+						ws.sendClient(client, errors["malformed"])
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
