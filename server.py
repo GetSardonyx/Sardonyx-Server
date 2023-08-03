@@ -8,9 +8,28 @@ import uuid
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
-basedir = os.getcwd()
+# dict that contains all connected clients and their client ids
 connected = {
 	"0": "Server"
+}
+
+# credits to Meower for this idea, all error codes and easy nicknames to refer to them
+errors = {
+	"ok": "901 - OK",
+	"bound": "902 - Bound",
+	"idk": "801 - Internal Confusion",
+	"corrupt": "802 - Corrupted Account",
+	"signup_error": "803 - Signup Error",
+	"login_error": "804 - Login Error",
+	"malformed_request": "701 - Malformed Request",
+	"malformed": "702 - Malformed Data",
+	"invalid_user": "703 - Invalid Username",
+	"invalid_pass": "704 - Invalid Password",
+	"banned": "705 - Account Banned",
+	"exists": "601 - Exists",
+	"unauthed": "602 - Unauthorized",
+	"authed": "603 - Authorized",
+	"state": "604 - Invalid State"
 }
 
 if(os.path.isfile("./mongo.uri")):
@@ -44,7 +63,7 @@ class	db:
 		acc = usrc.find_one({"username": username})
 		if(acc!=None):
 			acc["password"] = ""
-			return str(acc)
+			return acc
 		else:
 			return None
 	
@@ -112,7 +131,7 @@ def loginclientwithid(client, username):
 	cltemp = client["id"]
 	connected[str(cltemp)] = username
 	print("User " + username + " is now bound to connected ID " + str(cltemp))
-	ws.sendClient(client, "902 - Bound")
+	ws.sendClient(client, errors["bound"])
 	print(str(connected))
 
 def new_client(client, server):
@@ -132,24 +151,24 @@ def on_msg(client, server, message):
 		r = json.loads(str(message))
 	except ValueError:
 		continuing = False
-		ws.sendClient(client, "701 - Malformed Request")
+		ws.sendClient(client, errors["malformed_request"])
 	except:
 		continuing = False
-		ws.sendClient(client, "801 - Internal Confusion")
+		ws.sendClient(client, errors["idk"])
 	if(continuing):
 		if(not "ask" in r):
-			ws.sendClient(client, "702 - Malformed Data")
+			ws.sendClient(client, errors["malformed"])
 		elif(r["ask"]=="signup"):
 			if("username" in r):
 				if("password" in r):
 					if(db.insertUser(r["username"], r["password"])):
 						loginclientwithid(client, r["username"])
 					else:
-						ws.sendClient(client, "803 - Signup Error")
+						ws.sendClient(client, errors["signup_error"])
 				else:
-					ws.sendClient(client, "702 - Malformed Data")
+					ws.sendClient(client, errors["malformed"])
 			else:
-				ws.sendClient(client, "702 - Malformed Data")
+				ws.sendClient(client, errors["malformed"])
 		elif(r["ask"]=="login"):
 			if("username" in r):
 				if("password" in r):
@@ -157,32 +176,32 @@ def on_msg(client, server, message):
 					if(auth=="done"):
 						loginclientwithid(client, r["username"])
 					elif(auth=="invalid"):
-						ws.sendClient(client, "704 - Invalid Password")	
+						ws.sendClient(client, errors["invalid_pass"])	
 					elif(auth=="banned"):
-						ws.sendClient(client, "705 - Account Banned")	
+						ws.sendClient(client, errors["banned"])	
 					elif(auth=="notmade"):
-						ws.sendClient(client, "703 - Invalid Username")
+						ws.sendClient(client, errors["invalid_user"])
 					else:
-						ws.sendClient(client, "804 - Login Error")
+						ws.sendClient(client, errors["login_error"])
 				else:
-					ws.sendClient(client, "702 - Malformed Data")
+					ws.sendClient(client, errors["malformed"])
 			else:
-				ws.sendClient(client, "702 - Malformed Data")
+				ws.sendClient(client, errors["malformed"])
 		elif(r["ask"]=="post"):
 			if("msg" in r):
 				cltemp = client["id"]
 				if(str(cltemp) in connected):
 					stuff = db.insertPost(cltemp, r["msg"])
 					if(stuff=="done"):
-						ws.sendClient(client, "901 - OK")
+						ws.sendClient(client, errors["ok"])
 					elif(stuff=="fail"):
-						ws.sendClient(client, "805 - Posting Error")
+						ws.sendClient(client, errors["idk"])
 					elif(stuff=="unauthed"):
-						ws.sendClient(client, "602 - Unauthorized")
+						ws.sendClient(client, errors["unauthed"])
 				else:
-					ws.sendClient(client, "602 - Unauthorized")
+					ws.sendClient(client, errors["unauthed"])
 			else:
-				ws.sendClient(client, "702 - Malformed Data")
+				ws.sendClient(client, errors["malformed"])
 		elif(r["ask"]=="ping"):
 			ws.sendClient(client, "Pong!")
 		elif(r["ask"]=="get_posts"):
@@ -191,9 +210,22 @@ def on_msg(client, server, message):
 			if("username" in r):
 				ws.sendClient(client, str(db.getUser(r["username"])))
 			else:
-				ws.sendClient(client, "702 - Malformed Data")
+				ws.sendClient(client, errors["malformed"])
+		elif(r["ask"]=="ban"):
+			if("username" in r):
+				cltemp = str(client["id"])
+				if(cltemp in connected):
+					a = db.getUser(connected[cltemp])
+					if(a["state"]!=0):
+						ws.sendClient(client, "okokok")
+					else:
+						ws.sendClient(client, errors["state"])
+				else:
+					ws.sendClient(client, errors["unauthed"])
+			else:
+				ws.sendClient(client, errors["malformed"])
 		else:
-			ws.sendClient(client, "000 - Invalid Data")
+			ws.sendClient(client, errors["malformed_request"])
 					
 					
 
