@@ -30,6 +30,7 @@ errors = {
 	"invalid_user": "703 - Invalid Username",
 	"invalid_pass": "704 - Invalid Password",
 	"banned": "705 - Account Banned",
+	"cl": "706 - Character Limit",
 	"exists": "601 - Exists",
 	"unauthed": "602 - Unauthorized",
 	"authed": "603 - Authorized",
@@ -93,23 +94,26 @@ class	db: # database operations
 		return list(posc.find().sort("timestamp", -1).limit(10))
 	
 	def insertPost(id, content): # adds a post to the db and sends it to connected clients
-		ts = time.time()
-		pid = str(uuid.uuid4())
-		datatosend = {
-			"_id": pid,
-			"username": id,
-			"content": content,
-			"timestamp": ts,
-			"likes": 0,
-			"reports": []
-		}
-		try:
-			posc.insert_one(datatosend)
-		except Exception as e:
-			print(e)
-			return "fail"
-		ws.sendToAll(str(datatosend))
-		return "done"
+		if(len(content)<=312):
+			ts = time.time()
+			pid = str(uuid.uuid4())
+			datatosend = {
+				"_id": pid,
+				"username": id,
+				"content": content,
+				"timestamp": ts,
+				"likes": 0,
+				"reports": []
+			}
+			try:
+				posc.insert_one(datatosend)
+			except Exception as e:
+				print(e)
+				return "fail"
+			ws.sendToAll(str(datatosend))
+			return "done"
+		else:
+			return "cl"
 		
 	def authUser(username, password): # authenticates a user
 		acc = usrc.find_one({"username": username})
@@ -117,35 +121,41 @@ class	db: # database operations
 			if(acc["banned"]):
 				return "banned"
 			else:
-				pw_hash = bytes(password, 'utf-8')
-				hpw_hash = bytes(acc["password"], 'utf-8')
-				if bcrypt.checkpw(pw_hash, hpw_hash): # check if pswd is valid
-					return "done"
+				if(len(username)<=14 and len(password)<=24):
+					pw_hash = bytes(password, 'utf-8')
+					hpw_hash = bytes(acc["password"], 'utf-8')
+					if bcrypt.checkpw(pw_hash, hpw_hash): # check if pswd is valid
+						return "done"
+					else:
+						return "invalid"
 				else:
-					return "invalid"
+					return "cl"
 		else:
 			return "notmade"
 		
 	
 	def insertUser(username, password): # inserts a new user account
 		if(usrc.find_one({"username": username})==None):
-			pw_hash = bytes(password, 'utf-8')
-			hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
-			hashdef = hashed.decode()
-			pid = str(uuid.uuid4())
-			datatosend = {
-				"_id": pid,
-				"username": username,
-				"password": hashdef,
-				"banned": False,
-				"bio": "This user has not set their bio.",
-				"state": 0
-			}
-			try:
-				usrc.insert_one(datatosend)
-			except:
+			if(len(username)<=14 and len(password)<=24):
+				pw_hash = bytes(password, 'utf-8')
+				hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
+				hashdef = hashed.decode()
+				pid = str(uuid.uuid4())
+				datatosend = {
+					"_id": pid,
+					"username": username,
+					"password": hashdef,
+					"banned": False,
+					"bio": "This user has not set their bio.",
+					"state": 0
+				}
+				try:
+					usrc.insert_one(datatosend)
+				except:
+					return False
+				return True
+			else:
 				return False
-			return True
 		else:
 			return False
 	
@@ -222,6 +232,8 @@ def on_msg(client, server, message):
 							ws.sendClient(client, errors["banned"])	
 						elif(auth=="notmade"):
 							ws.sendClient(client, errors["invalid_user"])
+						elif(auth=="cl"):
+							ws.sendClient(client, errors["cl"])
 						else:
 							ws.sendClient(client, errors["login_error"])
 					else:
@@ -246,6 +258,8 @@ def on_msg(client, server, message):
 							ws.sendClient(client, errors["idk"])
 						elif(stuff=="unauthed"):
 							ws.sendClient(client, errors["unauthed"])
+						elif(stuff=="cl"):
+							ws.sendClient(client, errors["cl"])
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
