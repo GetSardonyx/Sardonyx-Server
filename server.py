@@ -327,8 +327,11 @@ def on_msg(client, server, message):
 							ab["banned"] = True
 							abc = db.changeUser(r["username"], "banned", True)
 							if(abc):
-								abcd = connected[r["username"]]
-								abcd["handler"].send_close(1000, bytes('', encoding='utf-8'))
+								try:
+									abcd = connected[r["username"]]
+									abcd["handler"].send_close(1000, bytes('', encoding='utf-8'))
+								except:
+									pass
 								ws.sendClient(client, errors["ok"])
 							else:
 								ws.sendClient(client, errors["idk"])
@@ -343,8 +346,11 @@ def on_msg(client, server, message):
 				if("username" in client):
 					a = db.getUser(client["username"])
 					if(a["state"]!=0):
-						abcd = connected[r["username"]]
-						abcd["handler"].send_close(1000, bytes('', encoding='utf-8'))
+						try:
+							abcd = connected[r["username"]]
+							abcd["handler"].send_close(1000, bytes('', encoding='utf-8'))
+						except:
+							pass
 						ws.sendClient(client, errors["ok"])
 					else:
 						ws.sendClient(client, errors["state"])
@@ -392,6 +398,15 @@ def on_msg(client, server, message):
 							ws.sendClient(client, errors["idk"])
 					else:
 						ws.sendClient(client, errors["state"])
+				else:
+					ws.sendClient(client, errors["unauthed"])
+			else:
+				ws.sendClient(client, errors["malformed"])
+		elif(r["ask"]=="get_user_state"):
+			if("username" in r):
+				if("username" in client):
+					dbr = db.getUser(r["username"])
+					ws.sendClient(client, '{"state": "' + str(dbr["state"]) + '"}')
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
