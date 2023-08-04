@@ -126,7 +126,7 @@ class	db: # database operations
 		return lis2
 	
 	def insertPost(id, content): # adds a post to the db and sends it to connected clients
-		if(len(content)<=312):
+		if(len(content)<=312 and len(content)!=0):
 			ts = time.time()
 			pid = str(uuid.uuid4())
 			datatosend = {
