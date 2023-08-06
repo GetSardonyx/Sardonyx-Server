@@ -89,14 +89,14 @@ class	db: # database operations
 		
 	def getUncleanedUser(username): # this returns a user's account without removing the password field, this should be used with heavy caution
 		acc = usrc.find_one({"username": username})
-		if(acc!=None):
+		if acc:
 			return acc
 		else:
 			return None
 
 	def getUser(username): # this returns a user's account
 		acc = usrc.find_one({"username": username})
-		if(acc!=None):
+		if acc:
 			acc["password"] = "REDACTED" # this replaces the password value with the string REDACTED
 			return acc
 		else:
@@ -104,14 +104,14 @@ class	db: # database operations
 			
 	def getUncleanedPost(id): # this returns a post
 		postv = posc.find_one({"_id": id})
-		if(postv!=None):
+		if postv:
 			return postv
 		else:
 			return None
 			
 	def getPost(id): # this returns a post
 		postv = posc.find_one({"_id": id})
-		if(postv!=None):
+		if postv:
 			postv["reports"] = ["REDACTED"]
 			return postv
 		else:
@@ -142,14 +142,14 @@ class	db: # database operations
 			except Exception as e:
 				print(e)
 				return "fail"
-			ws.sendToAll(str(datatosend))
+			ws.sendToAll(json.dumps(datatosend))
 			return "done"
 		else:
 			return "cl"
 		
 	def authUser(username, password): # authenticates a user
 		acc = usrc.find_one({"username": username})
-		if(acc!=None):
+		if acc:
 			if(acc["banned"]):
 				return "banned"
 			else:
@@ -304,13 +304,17 @@ def on_msg(client, server, message):
 			ws.sendClient(client, "Pong!")
 		elif(r["ask"]=="get_posts"):
 			if("username" in client):
-				ws.sendClient(client, str(db.getPosts()))
+				ws.sendClient(client, json.dumps(db.getPosts()))
 			else:
 				ws.sendClient(client, errors["unauthed"])
 		elif(r["ask"]=="get_user"):
 			if("username" in r):
 				if("username" in client):
-					ws.sendClient(client, str(db.getUser(r["username"])))
+					user = db.getUser(r["username"])
+					if user:
+						ws.sendClient(client, json.dumps(user))
+					else:
+						ws.sendClient(client, "None")
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
@@ -362,7 +366,7 @@ def on_msg(client, server, message):
 			if("id" in r and "reason" in r):
 				if("username" in client):
 					gp = db.getUncleanedPost(r["id"])
-					if(gp!=None):
+					if gp:
 						try:
 							ar = gp["reports"]
 							ar.append(r["reason"])
@@ -381,7 +385,10 @@ def on_msg(client, server, message):
 			if("id" in r):
 				if("username" in client):
 					gp = db.getPost(r["id"])
-					ws.sendClient(client, str(gp))
+					if gp:
+						ws.sendClient(client, json.dumps(gp))
+					else:
+						ws.sendClient(client, "None")
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
@@ -392,8 +399,8 @@ def on_msg(client, server, message):
 					a = db.getUser(client["username"])
 					if(a["state"]!=0):
 						gp = db.getUncleanedPost(r["id"])
-						if(gp!=None):
-							ws.sendClient(client, str(gp["reports"]))
+						if gp:
+							ws.sendClient(client, json.dumps(gp["reports"]))
 						else:
 							ws.sendClient(client, errors["idk"])
 					else:
@@ -406,7 +413,10 @@ def on_msg(client, server, message):
 			if("username" in r):
 				if("username" in client):
 					dbr = db.getUser(r["username"])
-					ws.sendClient(client, '{"state": "' + str(dbr["state"]) + '"}')
+					if dbr:
+						ws.sendClient(client, json.dumps({"state": dbr["state"]}))
+					else:
+						ws.sendClient(client, errors["idk"])
 				else:
 					ws.sendClient(client, errors["unauthed"])
 			else:
