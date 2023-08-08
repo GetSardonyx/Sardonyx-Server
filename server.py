@@ -421,6 +421,18 @@ def on_msg(client, server, message):
                     ws.sendClient(client, errors["unauthed"])
             else:
                 ws.sendClient(client, errors["malformed"])
+        elif(r["ask"]=="set_bio"):
+            if("bio" in r):
+                if("username" in client):
+                    abc = db.changeUser(client["username"], "bio", r["bio"])
+                    if(abc):
+                        ws.sendClient(client, errors["ok"])
+                    else:
+                        ws.sendClient(client, errors["idk"])
+                else:
+                    ws.sendClient(client, errors["unauthed"])
+            else:
+                ws.sendClient(client, errors["malformed"])
         else:
             ws.sendClient(client, errors["malformed_request"])
                     
