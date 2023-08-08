@@ -1,5 +1,9 @@
 # Sardonyx-Server
 The server of Sardonyx.
+# Credits
+Credits to [@tnix100](https://github.com/tnix100) for help with server setup and security.
+
+Credits to [Meower Media Co](https://github.com/meower-media-co) for help with bcrypt.
 # Documentation
 **Note:** This documentation is a work in progress. Some details may be innacurate, or not helpful.
 ### signup 
@@ -62,3 +66,15 @@ This action will get a specific post by ID.
 Example: `{"ask":"get_reports","id":"unique-post-id"}` 
 
 This action will get the reports of a post. 
+### get_user_state
+*Tags: requires-auth*
+
+Example: `{"ask":"get_user_state","username":"Sardonyx"}` 
+
+This action will return a user's state. 
+### set_bio
+*Tags: requires-auth*
+
+Example: `{"ask":"set_bio","bio":"Hello world!"}` 
+
+This action will update the currently authenticated user's bio.
