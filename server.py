@@ -1,7 +1,7 @@
 import logging
 from websocket_server import WebsocketServer
 import json
-import bcrypt
+from passlib.hash import scrypt
 import os
 import time
 import uuid
@@ -154,9 +154,7 @@ class    db: # database operations
                 return "banned"
             else:
                 if(len(username)<=14 and len(password)<=24 and len(username)>=3 and len(password)>=8):
-                    pw_hash = bytes(password, 'utf-8')
-                    hpw_hash = bytes(acc["password"], 'utf-8')
-                    if bcrypt.checkpw(pw_hash, hpw_hash): # check if pswd is valid
+                    if scrypt.verify(password, acc["password"]): # check if pswd is valid
                         return "done"
                     else:
                         return "invalid"
@@ -169,9 +167,7 @@ class    db: # database operations
     def insertUser(username, password): # inserts a new user account
         if(usrc.find_one({"username": username})==None):
             if(len(username)<=14 and len(password)<=24 and len(username)>=3 and len(password)>=8):
-                pw_hash = bytes(password, 'utf-8')
-                hashed = bcrypt.hashpw(pw_hash, bcrypt.gensalt())
-                hashdef = hashed.decode()
+                hashdef = scrypt.hash(password)
                 pid = str(uuid.uuid4())
                 datatosend = {
                     "_id": pid,
@@ -179,6 +175,7 @@ class    db: # database operations
                     "password": hashdef,
                     "banned": False,
                     "bio": "This user has not set their bio.",
+                    "badges": [],
                     "state": 0
                 }
                 try:
