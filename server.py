@@ -97,7 +97,7 @@ class    db: # database operations
     def getUser(username): # this returns a user's account
         acc = usrc.find_one({"username": username})
         if acc:
-            acc["password"] = "REDACTED" # this replaces the password value with the string REDACTED
+            del acc["password"]
             return acc
         else:
             return None
@@ -112,7 +112,7 @@ class    db: # database operations
     def getPost(id): # this returns a post
         postv = posc.find_one({"_id": id})
         if postv:
-            postv["reports"] = ["REDACTED"]
+            del postv["reports"]
             return postv
         else:
             return None
