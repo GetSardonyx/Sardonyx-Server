@@ -209,6 +209,10 @@ def left_client(client, server):
     
 def on_msg(client, server, message):
     os.chdir(basedir)
+    if(len(message)>=350):
+        ws.sendClient(client, errors["cl"])
+        return False
+
     if(str(client["id"]) in lc):
         lca = lc[str(client["id"])]
         lcab = time.time() - lca
