@@ -3,7 +3,7 @@ The server of Sardonyx.
 # Credits
 Credits to [@tnix100](https://github.com/tnix100) for help with server setup and security.
 
-Credits to [Meower Media Co](https://github.com/meower-media-co) for help with bcrypt.
+Credits to [Meower Media Co](https://github.com/meower-media-co) for help with bcrypt (on older server versions).
 # Documentation
 **Note:** This documentation is a work in progress. Some details may be innacurate, or not helpful.
 ### signup 
