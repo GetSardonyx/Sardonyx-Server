@@ -8,6 +8,7 @@ import uuid
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import bson
+import re
 
 basedir = os.getcwd()
 
@@ -35,8 +36,11 @@ errors = {
     "unauthed": "602 - Unauthorized",
     "authed": "603 - Authorized",
     "state": "604 - Invalid State",
-    "ratelimit": "605 - Ratelimited"
+    "ratelimit": "605 - Ratelimited",
+    "toomany": "805 - Too Many"
 }
+
+vuc = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","1","2","3","4""5","6","7","8","9","0","-",".","_"] 
 
 if(os.path.isfile("./mongo.uri")):
     f = open("./mongo.uri", 'r')
@@ -58,6 +62,10 @@ debugMode = True # SET THIS TO FALSE IN PRODUCTION!! IF YOU LEAVE THIS AS TRUE T
 dba = client[datab]
 posc = dba[posb]
 usrc = dba[usrb]
+
+def check_string(string, char_list): # thanks, stackoverflow
+    pattern = '[^' + ''.join(char_list) + ']'
+    return bool(re.search(pattern, string))
 
 class ws:
     def sendClient(client, msg):
@@ -134,8 +142,9 @@ class    db: # database operations
                 "username": id,
                 "content": content,
                 "timestamp": ts,
-                "likes": 0,
-                "reports": []
+                "likes": [],
+                "reports": [],
+                "comments": []
             }
             try:
                 posc.insert_one(datatosend)
@@ -167,22 +176,27 @@ class    db: # database operations
     def insertUser(username, password): # inserts a new user account
         if(usrc.find_one({"username": username})==None):
             if(len(username)<=14 and len(password)<=24 and len(username)>=3 and len(password)>=8):
-                hashdef = scrypt.hash(password)
-                pid = str(uuid.uuid4())
-                datatosend = {
-                    "_id": pid,
-                    "username": username,
-                    "password": hashdef,
-                    "banned": False,
-                    "bio": "This user has not set their bio.",
-                    "badges": [],
-                    "state": 0
-                }
-                try:
-                    usrc.insert_one(datatosend)
-                except:
+                if(check_string(username, vuc)==False):
+                    hashdef = scrypt.hash(password)
+                    pid = str(uuid.uuid4())
+                    ts = time.time()
+                    datatosend = {
+                        "_id": pid,
+                        "created": ts,
+                        "username": username,
+                        "password": hashdef,
+                        "banned": False,
+                        "bio": "This user has not set their bio.",
+                        "badges": [],
+                        "state": 0
+                    }
+                    try:
+                        usrc.insert_one(datatosend)
+                    except:
+                        return False
+                    return True
+                else:
                     return False
-                return True
             else:
                 return False
         else:
@@ -196,7 +210,7 @@ def loginclientwithid(client, username): # binds client id and username
     print(str(connected) + " //")
 
 def new_client(client, server):
-    ws.sendClient(client, str(client))
+    print("New client connected.")
     
 def left_client(client, server):
     if("username" in client):
@@ -370,7 +384,7 @@ def on_msg(client, server, message):
                     if gp:
                         try:
                             ar = gp["reports"]
-                            ar.append(r["reason"])
+                            ar.append(r["reason"] + " - " + client["username"])
                             db.changePost(r["id"], "reports", ar)
                             ws.sendClient(client, errors["ok"])
                         except Exception as e:
@@ -384,14 +398,11 @@ def on_msg(client, server, message):
                 ws.sendClient(client, errors["malformed"])
         elif(r["ask"]=="get_post"):
             if("id" in r):
-                if("username" in client):
-                    gp = db.getPost(r["id"])
-                    if gp:
-                        ws.sendClient(client, json.dumps(gp))
-                    else:
-                        ws.sendClient(client, "None")
+                gp = db.getPost(r["id"])
+                if gp:
+                    ws.sendClient(client, json.dumps(gp))
                 else:
-                    ws.sendClient(client, errors["unauthed"])
+                    ws.sendClient(client, "None")
             else:
                 ws.sendClient(client, errors["malformed"])
         elif(r["ask"]=="get_reports"):
@@ -430,6 +441,61 @@ def on_msg(client, server, message):
                         ws.sendClient(client, errors["ok"])
                     else:
                         ws.sendClient(client, errors["idk"])
+                else:
+                    ws.sendClient(client, errors["unauthed"])
+            else:
+                ws.sendClient(client, errors["malformed"])
+#        elif(r["ask"]=="comment_post"):
+#            if("id" in r and "msg" in r):
+#                if("username" in client):
+#                    gp = db.getUncleanedPost(r["id"])
+#                    if gp:
+#                        try:
+#                            ar = gp["comments"]
+#                            if(len(gp)=<25):
+#                                pid = str(uuid.uuid4())
+#                                ts = time.time()
+#                                datatosend = {
+#                                    "_id": pid,
+#                                    "username": client["username"],
+#                                    "content": r["msg"],
+#                                    "timestamp": ts,
+#                                    "likes": [],
+#                                    "reports": [],
+#                                    "comments": []
+#                                }
+#                                ar.append(datatosend)
+#                                db.changePost(r["id"], "reports", ar)
+#                                ws.sendClient(client, errors["ok"])
+#                            else:
+#                                ws.sendClient(client, errors["toomany"])
+#                        except Exception as e:
+#                            print(e)
+#                            ws.sendClient(client, errors["idk"])
+#                    else:
+#                        ws.sendClient(client, errors["malformed"])
+#                else:
+#                    ws.sendClient(client, errors["unauthed"])
+#            else:
+#                ws.sendClient(client, errors["malformed"])
+        elif(r["ask"]=="like_post"):
+            if("id" in r):
+                if("username" in client):
+                    gp = db.getUncleanedPost(r["id"])
+                    if gp:
+                        try:
+                            ar = gp["likes"]
+                            if(client["username"] in ar):
+                                ws.sendClient(client, errors["toomany"])
+                            else:
+                                ar.append(client["username"])
+                                db.changePost(r["id"], "likes", ar)
+                                ws.sendClient(client, errors["ok"])
+                        except Exception as e:
+                            print(e)
+                            ws.sendClient(client, errors["idk"])
+                    else:
+                        ws.sendClient(client, errors["malformed"])
                 else:
                     ws.sendClient(client, errors["unauthed"])
             else:
