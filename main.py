@@ -163,7 +163,7 @@ class MakePost(Resource):
     accp = parse_user(acc)
     if(accp[0]):
       if("post" or "full" in accp[3]):
-        resp = flask.Response(json.dumps({"Response": "", "": {}}), 500)
+        resp = flask.Response(json.dumps({"Response": "Restricted", "Data": accp[3]}), 500)
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
       pid = str(uuid.uuid4())
