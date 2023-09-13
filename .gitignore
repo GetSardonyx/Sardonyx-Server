@@ -5,5 +5,5 @@ Posts/
 # database uri
 mongo.uri
 
-# save script
+# auto push thingy
 save.py
