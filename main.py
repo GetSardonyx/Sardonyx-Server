@@ -31,17 +31,19 @@ client = MongoClient(uri, server_api=ServerApi('1'))
 datab = "Sardonyx" # The name of the main Database, default Sardonyx
 posb = "Posts" # The name of the post collection, default Posts
 usrb = "Users" # The name of the users colllection, default Users
+repb = "Reports" # The name of the reports colllection, default Reports
 # Configuration ends here
 
 dba = client[datab]
 posc = dba[posb]
 usrc = dba[usrb]
+repc = dba[repb]
 
 def parse_user(user, getPswd=False, getToken=False):
   if(user==None):
     return [False]
   else:
-    resto = [True, user['username'], user['state']]
+    resto = [True, user['username'], user['state'], user['restrictions']]
     resto.append(user['password']) if getPswd == True else False
     resto.append(user['token']) if getToken == True else False
     return resto
@@ -160,15 +162,18 @@ class MakePost(Resource):
     acc = usrc.find_one({"token": msg['token']})
     accp = parse_user(acc)
     if(accp[0]):
+      if("post" or "full" in accp[3]):
+        resp = flask.Response(json.dumps({"Response": "", "": {}}), 500)
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
       pid = str(uuid.uuid4())
       ts = time.time()
       datatosend = 
         "_id": pid,
-        "username": ,
-        "content": content,
+        "username": accp[1],
+        "content": msg['content'],
         "timestamp": ts,
         "likes": [],
-        "reports": [],
         "comments": []
       }
     else:
