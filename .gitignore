@@ -4,3 +4,6 @@ Posts/
 
 # database uri
 mongo.uri
+
+# save script
+save.py
